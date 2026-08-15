@@ -1,32 +1,58 @@
-# Python build artifacts
+# Upstream (prime-agent) ignores
+node_modules/
+dist/
+*.log
+.DS_Store
+*.tsbuildinfo
+packages/*/dist/
+packages/*/dist-chrome/
+packages/*/dist-firefox/
+*.cpuprofile
+coverage/
+.nyc_output/
+.pi_config/
+tui-debug.log
+compaction-results/
+.pi_config/
+packages/coding-agent/binaries/
+.kernel-venv/
+.worktrees/
+
+# Environment
+.env
+.env.*
+*.env
+
+# Editor files
+.vscode/
+.zed/
+.idea/
+.claude/
+*.swp
+*.swo
+*~
+
+# Python (skills)
 __pycache__/
 *.py[cod]
 *.egg-info/
 build/
-dist/
 .venv/
 venv/
 
 # Secrets / credentials — never commit
-.env
-.env.*
-*.env
 *credentials*
 *secret*
+auth.json
 
 # Research raw outputs (scraped third-party content, large)
 research_out_*
 *.jsonl
 
-# Runtime / logs
-*.log
+# Runtime
 *.pid
 *.tmp
 
-# Node (if the skill tree ever vendors JS deps)
-node_modules/
-
 # OS junk
-.DS_Store
 Thumbs.db
 desktop.ini
