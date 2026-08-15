@@ -1,0 +1,13 @@
+[project]
+name = "prime-agent-skill-source-registry"
+version = "0.1.0"
+description = "Unified research source registry: academic (arXiv/OpenAlex/S2), community (HN/Reddit), news (GDELT/RSS), Telegram public channels, same-domain crawler."
+requires-python = ">=3.10"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/source_registry"]

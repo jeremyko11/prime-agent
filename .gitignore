@@ -1,0 +1,32 @@
+# Python build artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Secrets / credentials — never commit
+.env
+.env.*
+*.env
+*credentials*
+*secret*
+
+# Research raw outputs (scraped third-party content, large)
+research_out_*
+*.jsonl
+
+# Runtime / logs
+*.log
+*.pid
+*.tmp
+
+# Node (if the skill tree ever vendors JS deps)
+node_modules/
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini

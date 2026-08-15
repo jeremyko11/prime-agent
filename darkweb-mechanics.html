@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>暗网数据获取机制剖析 — 教育性技术文档</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --ink: #e6edf3;
+    --muted: #8b949e;
+    --rule: #30363d;
+    --accent: #58a6ff;
+    --accent2: #f0883e;
+    --danger: #f85149;
+    --ok: #3fb950;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    font-size: 15px;
+    line-height: 1.75;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 4rem;
+  }
+  header { border-bottom: 1px solid var(--rule); padding-bottom: 1.5rem; margin-bottom: 2rem; }
+  h1 { font-size: 1.6rem; letter-spacing: 0.02em; margin-bottom: 0.4rem; }
+  .sub { color: var(--muted); font-size: 0.85rem; }
+  h2 {
+    font-size: 1.15rem;
+    margin-top: 2.4rem;
+    margin-bottom: 0.9rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+  }
+  h2 .no { color: var(--accent); font-family: Consolas, monospace; font-size: 1rem; }
+  h3 { font-size: 0.98rem; color: var(--accent); margin: 1.4rem 0 0.5rem; }
+  p { margin-bottom: 0.8rem; }
+  ul, ol { padding-left: 1.4rem; margin-bottom: 0.9rem; }
+  li { margin-bottom: 0.35rem; }
+  code {
+    font-family: Consolas, "Courier New", monospace;
+    background: var(--bg2);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 0.1em 0.4em;
+    font-size: 0.86em;
+    color: var(--accent2);
+  }
+  pre {
+    background: var(--bg2);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 0.9rem 0 1.1rem;
+    font-size: 0.82rem;
+    line-height: 1.6;
+  }
+  pre code { background: none; border: none; padding: 0; color: var(--ink); }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.2rem; font-size: 0.86rem; }
+  th { text-align: left; color: var(--accent); border-bottom: 2px solid var(--rule); padding: 0.5rem 0.6rem; }
+  td { border-bottom: 1px solid var(--rule); padding: 0.5rem 0.6rem; vertical-align: top; }
+  .callout {
+    background: var(--bg2);
+    border-left: 4px solid var(--accent2);
+    border-radius: 0 8px 8px 0;
+    padding: 0.9rem 1.1rem;
+    margin: 1rem 0 1.2rem;
+    font-size: 0.9rem;
+  }
+  .warn {
+    border-left-color: var(--danger);
+  }
+  .warn strong { color: var(--danger); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.8rem; margin: 1rem 0; }
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 0.9rem 1rem;
+    font-size: 0.88rem;
+  }
+  .card b { color: var(--accent); display: block; margin-bottom: 0.3rem; }
+  .tag {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-family: Consolas, monospace;
+    background: var(--bg2);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 0.05rem 0.6rem;
+    color: var(--muted);
+    margin-right: 0.4rem;
+  }
+  .muted { color: var(--muted); }
+  footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: 0.78rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>暗网数据获取机制剖析</h1>
+  <div class="sub">教育性技术文档 · 机制层面 · 不含访问入口与操作指引 · 2026-08-15</div>
+</header>
+
+<div class="callout warn">
+  <strong>阅读前提</strong>：本文档只剖析"机制"——网络分层、匿名协议原理、爬取工程的架构模式、以及合法替代路径。不含任何 .onion 地址、市场名录或访问教程。中国大陆对"擅自建立、使用非法定信道进行国际联网"有明确行政法规约束（《计算机信息网络国际联网管理暂行规定》），自行接入 Tor 网络本身就处于监管灰区。任何研究请以"阅读公开学术文献 + 使用合法聚合情报源"为主路径。
+</div>
+
+<h2><span class="no">01</span>三层网络分层模型：暗网到底"暗"在哪</h2>
+<p>讨论暗网前先厘清概念。学术界通用的分层是：</p>
+<table>
+  <tr><th>层级</th><th>定义</th><th>规模占比（估算）</th><th>例子</th></tr>
+  <tr>
+    <td><b>Surface Web</b><br>表层网</td>
+    <td>标准搜索引擎可索引的公开页面</td>
+    <td>约 4-10%</td>
+    <td>维基百科、新闻站、本报告用的 arXiv/OpenAlex</td>
+  </tr>
+  <tr>
+    <td><b>Deep Web</b><br>深网</td>
+    <td>需认证/动态生成、未被索引的内容。本身完全合法且是学术研究主体</td>
+    <td>约 90%</td>
+    <td>数据库查询结果、付费墙论文（你们已在用的 Semantic Scholar API 就属此类）、企业内网</td>
+  </tr>
+  <tr>
+    <td><b>Dark Web</b><br>暗网</td>
+    <td>深网中<b>需要特殊匿名网络层才能访问</b>的 overlay network（覆盖网络）</td>
+    <td>深网的极小子集（Tor 约 6-10 万个活跃 .onion 站点）</td>
+    <td>Tor 隐藏服务、I2P eepsite、Freenet freesite</td>
+  </tr>
+</table>
+<p class="muted">关键认知：暗网 ≠ 非法内容。Tor 网络中流量最大的站点之一是 Facebook 的官方镜像（为审查地区用户提供接入），BBC、纽约时报也运营 .onion 站点。但确实，执法机构研究估计暗网站点中涉及非法商品/服务的比例远高于表层网。</p>
+
+<h2><span class="no">02</span>匿名覆盖网络的技术机制</h2>
+
+<h3>Tor（The Onion Router）— 洋葱路由</h3>
+<p>核心机制是<b>三跳电路（circuit）+ 分层加密</b>：</p>
+<pre><code>客户端
+  │  ① 与目录权威(Directory Authority)握手，获取中继列表
+  │     （10 台左右由核心团队控制的守护节点，分发全网共识）
+  ▼
+┌─────────────── Tor 电路（每次访问新建）───────────────┐
+│                                                        │
+│  入口守卫 ──► 中间中继 ──► 出口节点 ──► 目标服务器      │
+│  (guard)      (relay)     (exit)                        │
+│                                                        │
+│  客户端把数据包套三层加密：                              │
+│  E(guard_pk, E(relay_pk, E(exit_pk, payload)))          │
+│  每一跳只解开一层 → 单一节点无法同时知道"你是谁+你在干嘛" │
+└────────────────────────────────────────────────────────┘</code></pre>
+<ul>
+  <li><b>访问普通网站</b>：流量经三跳后由出口节点以明文 HTTP 或其 TLS 连接目标。出口节点能看到内容（但不匿名时也看得到），只是不知道发起者是谁。</li>
+  <li><b>访问隐藏服务（.onion）</b>：这是"暗网"本体。双方各自建电路，在<b>会合点（Rendezvous Point）</b>碰头，全程不经过出口节点——服务端也不知道客户端真实 IP。服务本身以 v3 洋葱地址标识（56 字符 Base32），地址由公钥推导，本质是"自认证命名"，不需要 DNS 和证书机构。</li>
+  <li><b>v3 地址结构</b>：<code>公钥哈希(ED25519) + 校验和 + 版本号 → Base32 编码</code>。因为地址即身份，暗网站点没有"域名注册"环节，站长跑路或被查封后地址即死链——这是暗网内容高 churn（更替率）的根源。</li>
+</ul>
+
+<h3>其他覆盖网络对比</h3>
+<table>
+  <tr><th>网络</th><th>路由模型</th><th>特点</th></tr>
+  <tr><td><b>Tor</b></td><td>电路交换，低延迟</td><td>生态最大、客户端最多，也因此是爬虫与执法分析的主要对象</td></tr>
+  <tr><td><b>I2P</b> (Invisible Internet Project)</td><td>大蒜路由（garlic routing），包交换</td><td>全网对等、无中心目录，隐蔽性设计更强，规模小、速度慢</td></tr>
+  <tr><td><b>Freenet</b></td><td>分布式数据存储</td><td>内容加密分片存储于全部节点，发布者离线内容仍在——"抗审查存储"而非"匿名浏览"</td></tr>
+  <tr><td><b>Telegram 公开频道</b></td><td>客户端-服务器（非 P2P）</td><td>严格说不算暗网（有中心服务器），但因频道可匿名运营、不受各国内容监管，常被称为"灰色情报带"——这正是我们在 source-registry 里直接支持 <code>t.me/s/&lt;channel&gt;</code> 公开预览页的原因：它就是普通 HTTPS 页面</td></tr>
+</table>
+
+<h2><span class="no">03</span>学术界是怎么"获取暗网数据"的 — 工程架构模式</h2>
+<p>你想自己研究的话，最有价值的参考是学术界已发表的<b>暗网爬虫系统论文</b>。它们剖析了完整的数据获取管道，以下是通用架构模式（以 IEEE S&P / USENIX Security 上的经典工作为蓝本，如对暗网市场做纵向测量的系列论文、DARPA MEMEX 项目衍生工具）：</p>
+
+<div class="grid">
+  <div class="card"><b>① 种子发现层</b>暗网没有搜索引擎全覆盖（Ahmia 等只索引自愿被索引的站点），种子靠：已有地址库、公开 paste 站转链、HackerNews/论坛提及、以及 DNS sinkhole 数据共享。</div>
+  <div class="card"><b>② 抓取执行层</b>在 Tor 客户端上运行爬虫（学术上常用 Stem/PySocks 控制电路），核心难点是<b>礼貌速率控制</b>——暗网站点带宽极差，并发高会被 ban；以及<b>高 churn 处理</b>，30-50% 站点一个月内消失。</div>
+  <div class="card"><b>③ 解析与去重层</b>暗网页面大量是同一套市场软件（开源市场程序）的实例，跨站镜像严重。用 SimHash/MinHash 做近似去重，聚合同一"商品/情报"的多个镜像源。</div>
+  <div class="card"><b>④ 快照存档层</b>因为高 churn，学术界形成了"定时快照+公开释放"的传统——某位独立研究员多年快照的公开存档（几 GB 的市场页面数据集）至今仍是大部分论文的数据来源。</div>
+</div>
+
+<pre><code># 学术暗网测量系统的概念管道（伪代码，仅示意架构）
+seeds   = load_known_onions()          # ① 种子库
+for epoch in schedule:                 # 每周/每日快照
+    alive  = probe(seeds)              # 存活探测（大部分已死）
+    pages  = crawl_tor(alive, rate=1req/2s, timeout=60s)
+    dedup  = simhash_cluster(pages)    # 镜像去重
+    archive.save(epoch, pages)         # 不可变快照
+    seeds.update(extract_links(pages)) # 新地址回流种子库</code></pre>
+
+<p class="muted">注意一个关键工程事实：爬暗网的产出/成本比极低。哪怕对学术团队，一轮快照也要数周；而其中真正"独家"的信息占比很小——大部分情报最终会泄露/转载到表层网的威胁情报博客、Telegram 公开频道和论坛。</p>
+
+<h2><span class="no">04</span>情报聚合生态 — 为什么"不必自己爬"</h2>
+<p>这是本文档最核心的实用结论。安全行业早已完成"暗网数据的工业化聚合"，产出为<b>合法商业/公开情报产品</b>，研究暗网情报的正确姿势是消费这些聚合层：</p>
+<table>
+  <tr><th>聚合层类型</th><th>代表</th><th>对研究的意义</th></tr>
+  <tr><td>学术公开数据集</td><td>各大学释放的暗网市场快照数据集、Gwern 存档</td><td>免费、可离线分析、有论文背书，研究首选</td></tr>
+  <tr><td>学术搜索引擎</td><td>ahmia.fi（Tor 索引）、各类 darknet 论文语料</td><td>查询 .onion 站点的"表层入口"</td></tr>
+  <tr><td>商业威胁情报</td><td>Recorded Future、Flashpoint、Webz.io（原 Webhose）暗网 API</td><td>付费但合法，已做清洗/翻译/实体抽取，可直接 API 拉取</td></tr>
+  <tr><td>泄露数据聚合</td><td>HIBP（Have I Been Pwned）、DeHashed</td><td>数据泄露查询的合法形态</td></tr>
+  <tr><td>OSINT 社区</td><td>BleepingComputer、Krebs on Security、The Record</td><td>暗网事件的"二手但高质量"报道，免费</td></tr>
+</table>
+<p>换句话说：<b>暗网情报的信息差，90% 体现在"聚合层有没有"而不是"你能不能连上 Tor"</b>。对 prime-agent 这类研究系统，把 Webz.io/ Recorded Future 这类 API 接入 source-registry（它们就是标准 REST JSON 接口，和我们已实现的 GDELT 后端同构），就能以零法律风险拿到清洗过的暗网情报流——这是架构上完全成立的下一步。</p>
+
+<h2><span class="no">05</span>风险矩阵 — 自行接入的真实代价</h2>
+<table>
+  <tr><th>风险类别</th><th>机制</th><th>量级</th></tr>
+  <tr><td><b>法律（境内）</b></td><td>接入 Tor 需穿透国际联网管制；《网络安全法》《数据安全法》对"未经授权采集数据"另有约束；下载/持有特定类别内容（如泄露公民个人信息）在中国大陆与多数司法辖区均属刑事违法，与研究动机无关</td><td><span style="color:var(--danger)">高</span></td></tr>
+  <tr><td><b>法律（跨境取证）</b></td><td>执法机构长期运营蜜罐市场/服务端。与暗网服务交互的记录（即使只是浏览）可能成为他国执法数据库条目</td><td><span style="color:var(--danger)">高</span></td></tr>
+  <tr><td><b>技术</b></td><td>恶意 .onion 页面针对爬虫投毒：浏览器 0day、恶意脚本、超大压缩炸弹。学术爬虫一律在无 JS 的隔离 VM + 快照回滚环境运行</td><td><span style="color:var(--accent2)">中-高</span></td></tr>
+  <tr><td><b>流量侧信道</b></td><td>研究界已证明 Tor 流量指纹可被长周期流量分析去匿名化（网站指纹攻击），尤其在对手控制入口观察点时</td><td><span style="color:var(--accent2)">中</span></td></tr>
+  <tr><td><b>情报污染</b></td><td>暗网"独家消息"充斥操纵、诈骗与投毒信息，可信度普遍低于表层网同行评审源——与研究报告的 P0-P1 分层原则天然冲突</td><td><span style="color:var(--ok)">可控但必须建模</span></td></tr>
+</table>
+
+<h2><span class="no">06</span>给 prime-agent 的可行延伸（合法路径）</h2>
+<p>如果要继续按"模块化连接器"思路扩信源，下面这些与现有 source-registry 后端同构、零新增法律暴露面：</p>
+<ol>
+  <li><b>Webz.io / Recorded Future API</b>：商业暗网/论坛情报流，标准 JSON REST，接法与 GDELT 后端一致（需要 API key，付费）。</li>
+  <li><b>HIBP API</b>：泄露账户查询，免费档存在，适合安全类课题的实证数据。</li>
+  <li><b>BleepingComputer / The Record RSS</b>：暗网事件一手报道，接法与 Google News RSS 后端完全相同，零成本。</li>
+  <li><b>学术快照数据集下载</b>：作为 read-page 的本地文件输入，用于离线计量分析（如暗网市场寿命统计类课题）。</li>
+  <li><b>Telegram 频道库扩充</b>：现有 <code>tg_channels.json</code> 机制已就绪，往里加各领域公开情报频道即可（关键词匹配自动触发），这是"不受监管信源"里法律风险最低、信噪比最可控的一段。</li>
+</ol>
+
+<div class="callout">
+  <b>一句话总结</b>：暗网数据获取的真正门槛不是技术（Tor 爬虫架构在学术论文里是公开的），而是<b>法律暴露面 + 信噪比</b>。工程上正确的姿势是消费聚合层（商业 API、公开数据集、Telegram 公开频道、安全媒体报道），而不是自己下场爬。对研究深度而言，后者花的每一小时，投入在学术后端和跨域验证上的回报都更高。
+</div>
+
+<footer>
+  机制剖析基于公开学术文献与安全行业公开资料整理。本文档不含任何访问入口、地址或操作步骤，仅供技术教育用途。
+</footer>
+
+</body>
+</html>
