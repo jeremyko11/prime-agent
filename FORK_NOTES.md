@@ -31,9 +31,9 @@ Self-authored skills, deployed to `~/.prime/agent/skills/` and pip-installed
 Third-party skills included for a complete backup (see each `SKILL.md` for
 attribution): `mnemosyne` (MIT, FrankHu-HK), `pixelrag`,
 `CTF-Sandbox-Orchestrator` (GPL-3, ships its own LICENSE), and
-`reverse-skill-router` — the latter is **not committed** (its pentest reference
-pack has no upstream license); reinstall it from the public reverse-skill
-repo zip if needed.
+`reverse-skill-router` (from the public reverse-skill repo zip; it ships no
+upstream LICENSE — included at the repo owner's discretion for backup
+completeness).
 
 ### 2. Deployment & tests (repo root)
 
