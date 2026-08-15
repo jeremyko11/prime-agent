@@ -41,11 +41,18 @@ completeness).
   `pip install -e` into both venvs
 - `test_*.sh` — regression suite (e2e, per-skill, `_en_topic` translation chain)
 
-### 3. Harness config (`docs/settings.example.json`)
+### 3. Harness config
 
-Key setting: `"bundledSkills": { "websearch": false }` — disables the bundled
-Serper-based websearch so the custom 4-backend `websearch` skill takes over.
-Also: default provider `opencode`, model `deepseek-v4-flash`, thinking level high.
+- `docs/settings.example.json` — active settings: `"bundledSkills": { "websearch": false }`
+  (disables the bundled Serper skill so the custom 4-backend `websearch` takes over),
+  default provider `opencode`, model `deepseek-v4-flash`, thinking level high.
+- `auth.json.enc` — encrypted backup of `~/.prime/agent/auth.json` (API keys).
+  Decrypt (passphrase kept separately by the owner):
+
+  ```bash
+  openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
+    -in auth.json.enc -pass pass:'<PASSPHRASE>' -out auth.json
+  ```
 
 ## Environment variables
 
