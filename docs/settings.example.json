@@ -1,0 +1,16 @@
+{
+  "telemetry": {
+    "noticeShown": true
+  },
+  "onboardingShown": true,
+  "defaultProvider": "opencode",
+  "defaultModel": "deepseek-v4-flash",
+  "recentModels": [
+    "deepseek/deepseek-v4-flash",
+    "prime-inference/z-ai/glm-5.2"
+  ],
+  "defaultThinkingLevel": "high",
+  "bundledSkills": {
+    "websearch": false
+  }
+}

@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wsl-safety"
+version = "1.0.0"
+description = "WSL Filesystem Safety: blocks slow glob/walk on /mnt to prevent kernel hangs"
+requires-python = ">=3.8"
+
+[tool.setuptools.packages.find]
+where = ["src"]

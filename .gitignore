@@ -53,6 +53,9 @@ research_out_*
 *.pid
 *.tmp
 
+# Third-party skill pack excluded for redistribution (no upstream license)
+skills/reverse-skill-router/
+
 # OS junk
 Thumbs.db
 desktop.ini

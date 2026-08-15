@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "firecrawl-skill"
+version = "1.0.0"
+description = "Firecrawl web scraping skill for Prime Agent: scrape, search, crawl, deep research"
+requires-python = ">=3.8"
+dependencies = ["firecrawl-py>=4.0.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

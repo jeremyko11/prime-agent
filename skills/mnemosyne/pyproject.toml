@@ -1,0 +1,13 @@
+[project]
+name = "mnemosyne"
+version = "4.0.0"
+description = "Mnemosyne Memory Engine - L1 memory cache for 80%+ token savings"
+requires-python = ">=3.10"
+dependencies = ["prime-agent-runtime"]
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
